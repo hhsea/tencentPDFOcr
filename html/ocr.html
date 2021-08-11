@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .box{position: absolute;}
+    </style>
+</head>
+<body>
+    <div id="result"></div>
+    <div id="root" style="position: relative;">
+
+    </div>
+    <script src="ocrTxt.json"></script>
+    <script>
+
+        function findTxt(str){
+            var result=[];
+            for(var pageNo=0;pageNo<jsonArr.length;pageNo++){
+                var json=jsonArr[pageNo];
+                for(var i=0;i<json.TextDetections.length;i++){
+                    var txtObj=json.TextDetections[i];
+                    var txt=txtObj.DetectedText;
+                    if(-1!=txt.indexOf(str)){
+                        var thisPolygon=txtObj.ItemPolygon;
+                        //判断当前下标比0大，则取前面一条
+                        if(0<i){
+                            var prevTxtObj=json.TextDetections[i-1];
+                            var prevPolygon=prevTxtObj.ItemPolygon;
+                            if(21>Math.abs(thisPolygon.Y-prevPolygon.Y)){
+                                if(thisPolygon.X>prevPolygon.X){
+                                    //如果自己在右边，则，把自己拼接在上一个字符串之后，否则拼在之前
+                                    txt=prevTxtObj.DetectedText+txt;
+                                }else{
+                                    txt=txt+prevTxtObj.DetectedText;
+                                }
+                            }
+                        }
+                        if(json.TextDetections.length>i+1){
+                            var nextTxtObj=json.TextDetections[i+1];
+                            var nextPolygon=nextTxtObj.ItemPolygon;
+                            if(21>Math.abs(thisPolygon.Y-nextPolygon.Y)){
+                                if(thisPolygon.X>nextPolygon.X){
+                                    //如果自己在右边，则，把自己拼接在上一个字符串之后，否则拼在之前
+                                    txt=prevTxtObj.DetectedText+txt;
+                                }else{
+                                    txt=txt+prevTxtObj.DetectedText;
+                                }
+                            }
+                        }
+                        result.push(txt);
+                    }
+                }
+            }
+            return result;
+        }
+
+        function findTxt2(str1,str2){
+            var list=findTxt(str1);
+            for(var i=0;i<list.length;i++){
+                if(-1!=list[i].indexOf(str2)){
+                    var oSpan=document.createElement("div");
+                    //oSpan.setAttribute("class","box");
+                    oSpan.innerText=list[i];
+                    document.getElementById("result").appendChild(oSpan);
+                }
+            }
+        }
+        
+
+        function setTextBox(textDetection){
+            var oSpan=document.createElement("div");
+            oSpan.setAttribute("class","box");
+            oSpan.style.left=textDetection.ItemPolygon.X+"px";
+            oSpan.style.top=textDetection.ItemPolygon.Y+"px";
+            oSpan.innerText=textDetection.DetectedText;
+            document.getElementById("root").appendChild(oSpan);
+        }
+
+        function printTxt(){
+            var page_offsetHeight=0;
+            for(var pageNo=0;pageNo<jsonArr.length;pageNo++){
+                var json=jsonArr[pageNo];
+                for(var i=0;i<json.TextDetections.length;i++){
+                    json.TextDetections[i].ItemPolygon.Y+=page_offsetHeight;
+                    // console.log(json.TextDetections[i].ItemPolygon)
+                    var polygon=json.TextDetections[i].ItemPolygon;
+                    if(i!=0){
+                        var prevPolygon=json.TextDetections[i-1].ItemPolygon;
+                        if(21>Math.abs(polygon.Y-prevPolygon.Y)){
+                            json.TextDetections[i].ItemPolygon.Y=prevPolygon.Y;
+                        }
+                    }
+                    if(json.TextDetections.length==i+1){
+                        page_offsetHeight=(polygon.Y-70);
+                    }
+                    
+                    setTextBox(json.TextDetections[i]);
+                }
+            }
+        }
+
+        printTxt();
+        var list=findTxt("吴*");
+        findTxt2("吴*","3507");
+        // var list=findTxt("3507");
+        // findTxt2("3507","吴*");
+    </script>
+</body>
+</html>
